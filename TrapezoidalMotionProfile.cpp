@@ -11,7 +11,7 @@ TrapezoidalMotionProfile::TrapezoidalMotionProfile(Profile p) {
 
     da = (vmax * vmax - v0 * v0) / (2.0f * amax);
     dd = (vmax * vmax - vf * vf) / (2.0f * amax);
-    Serial.printf("da (m): %.2f  | dd (m): %.2f  |  d(m): %.2f \n",da,dd,d);
+    Serial.printf("d (m): %.3f  | da (m): %.3f  |  dd(m): %.3f \n",d,da,dd);
 
     if (da + dd > d) {
         vpeak = sqrtf(max((2.0f * amax * d + v0 * v0 + vf * vf) / 2.0f, 0.0f));
@@ -57,6 +57,29 @@ float TrapezoidalMotionProfile::distance(float t) {
     }
 
     return direction * dist;
+}
+
+float TrapezoidalMotionProfile::velocity(float t) {
+    float vel = 0.0f;
+
+    if (t < 0.0f) {
+        vel = 0.0f;
+    } else if (t < ta) {
+        // Acceleration phase
+        vel = v0 + amax * t;
+    } else if (t < ta + tc) {
+        // Constant velocity phase
+        vel = vpeak;
+    } else if (t < ta + tc + td) {
+        // Deceleration phase
+        float dt = t - ta - tc;
+        vel = vpeak - amax * dt;
+    } else {
+        // After motion is complete
+        vel = 0.0f;
+    }
+
+    return direction * vel;
 }
 
 float TrapezoidalMotionProfile::totalTime() {

@@ -23,6 +23,7 @@ public:
     TrapezoidalMotionProfile(Profile p);
 
     float distance(float t);
+    float velocity(float t);
     float totalTime();
 
 private:

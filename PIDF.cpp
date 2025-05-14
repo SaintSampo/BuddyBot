@@ -1,10 +1,11 @@
-#include "PID.h"
+#include "PIDF.h"
 
-PID::PID(float kp, float ki, float kd, 
+PIDF::PIDF(float kp, float ki, float kd, float kf,
          float min_output, float max_output) {
     this->kp = kp;
     this->ki = ki;
     this->kd = kd;
+    this->kd = kf;
     this->min_output = min_output;
     this->max_output = max_output;
 
@@ -15,7 +16,7 @@ PID::PID(float kp, float ki, float kd,
 
 }
 
-float PID::update(float error) {
+float PIDF::update(float error, float velocity) {
     unsigned long current_time = millis();
     float timestep;
 
@@ -33,7 +34,7 @@ float PID::update(float error) {
 
     // Calculate output
     //float output = this->kp * error + this->ki * this->prev_integral + this->kd * derivative;
-    float output = this->kp * error + this->kd * derivative;
+    float output = this->kp * error + this->kd * derivative + this->kf * velocity;
     this->prev_error = error;
 
     // Bound output by min and max values
@@ -45,7 +46,7 @@ float PID::update(float error) {
     return output;
 }
 
-void PID::clear_history() {
+void PIDF::clear_history() {
     this->prev_error = 0;
     this->prev_time = 0;
 }

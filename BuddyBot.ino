@@ -15,9 +15,9 @@ NoU_Servo servo(1);
 NoU_Drivetrain drivetrain(&frontLeftMotor, &frontRightMotor, &rearLeftMotor, &rearRightMotor);
 
 MotionProfile motionProfile = {
-    .x = { .target = 0.300, .startRate = 0, .endRate = 0, .maxAbsoluteRate = 0.050, .maxAccel = 20 },
-    .y = { .target =   0, .startRate = 0, .endRate = 0, .maxAbsoluteRate =   0.1, .maxAccel =   3.2 },
-    .theta = { .target =   0, .startRate = 0, .endRate = 0, .maxAbsoluteRate =   0.3, .maxAccel =   3.2 }
+    .x = { .target = 0.200, .startRate = 0, .endRate = 0, .maxAbsoluteRate = 0.080, .maxAccel = 3.00},
+    .y = { .target =   0.000, .startRate = 0, .endRate = 0, .maxAbsoluteRate =   0.300, .maxAccel =   1.500 },
+    .theta = { .target =   2*3.14, .startRate = 0, .endRate = 0, .maxAbsoluteRate =   1*3.14, .maxAccel =   4*3.14 }
 };
 
 void setup() {
@@ -38,10 +38,11 @@ void setup() {
     rearLeftMotor.setMotorCurve(0.25, 1, 0.2, 1);
     rearRightMotor.setMotorCurve(0.25, 1, 0.2, 1);
     
-    AutoModeAgent_holdStability(true, true, true);
+    //AutoModeAgent_holdStability(false, false, false);
 }
 
 void loop() {
+    //Serial.printf("x (m): %.3f  |  y (m): %.3f  |  theta (rad): %.2f \n",OpticalFlow_getX(),OpticalFlow_getY(), OpticalFlow_getTheta());
 
     // This measures your batteries voltage and sends it to PestoLink
     // You could use this value for a lot of cool things, for example make LEDs flash when your batteries are low?
@@ -52,10 +53,10 @@ void loop() {
     if (PestoLink.update()) {
         float yVelocity = -PestoLink.getAxis(1);
         float xVelocity = PestoLink.getAxis(0);
-        float rotation = PestoLink.getAxis(2);
+        float rotation = -PestoLink.getAxis(2);
 
         // Get robot heading (in radians) from a gyro
-        float heading = -OpticalFlow_getTheta();
+        float heading = OpticalFlow_getTheta();
 
         // Rotate joystick vector to be field-centric
         float cosA = cos(heading);
