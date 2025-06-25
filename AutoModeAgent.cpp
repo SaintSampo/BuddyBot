@@ -1,6 +1,7 @@
 #include "AutoModeAgent.h"
 
 extern NoU_Drivetrain drivetrain;
+extern NoU_Motor pivot;
 
 float X_Ku = 60.0;
 float X_Tu = 1.0/(150.0/60.0); //Period = 1/(BPM/60), BPM is measuring full cycles per minute
@@ -19,19 +20,23 @@ float T_F = 0.32; // 1 effort ~= pi rad/s -> 1/pi ~= 0.32
 
 PIDF thetaPID(T_P, 0, T_D, T_F, -1.0, 1.0);
 
-// === Global Motion Profiles ===
-MotionProfile motionProfiles[] = {
-  {
-    .x = { .target = 100, .startRate = 0, .endRate = 0, .maxAbsoluteRate = 300, .maxAccel = 600 },
-    .y = { .target =   0, .startRate = 0, .endRate = 0, .maxAbsoluteRate =   0, .maxAccel =   0 },
-    .theta = { .target =   0, .startRate = 0, .endRate = 0, .maxAbsoluteRate =   0, .maxAccel =   0 }
-  },
-  {
-    .x = { .target = 200, .startRate = 0, .endRate = 0, .maxAbsoluteRate = 300, .maxAccel = 600 },
-    .y = { .target =   0, .startRate = 0, .endRate = 0, .maxAbsoluteRate =   0, .maxAccel =   0 },
-    .theta = { .target =  90, .startRate = 0, .endRate = 0, .maxAbsoluteRate = 180, .maxAccel = 360 }
-  }
-};
+float P_Ku = 2.0; //0.18 when FF is used
+float P_Tu = 1.0/(200.0/60.0); //Period = 1/(BPM/60), BPM is measuring full cycles per minute
+
+float P_P = 0.6 * P_Ku;
+float P_D = 0.075 * P_Ku * P_Tu;
+float P_F = 0.16; // 1 effort ~= 2pi rad/s -> 1/2pi ~= 0.16
+
+PIDF pivotPID(P_P, 0, 0, P_F, -1, 1);
+
+float E_Ku = 0.11;
+float E_Tu = 1.0/(250.0/60.0); //Period = 1/(BPM/60), BPM is measuring full cycles per minute
+
+float E_P = 0.6 * E_Ku;
+float E_D = 0.075 * E_Ku * E_Tu;
+float E_F = 0; // 1 effort ~= 2pi rad/s -> 1/2pi ~= 0.16
+
+PIDF elevatorPID(E_P, 0, E_D, E_F, -1, 1);
 
 const int numProfiles = sizeof(motionProfiles) / sizeof(motionProfiles[0]);
 
@@ -94,7 +99,6 @@ void AutoModeAgent_executeProfile(const MotionProfile& p) {
     Pose fieldTargetVelocity = {xProfile.velocity(elapsedTime), yProfile.velocity(elapsedTime), thetaProfile.velocity(elapsedTime)};
     Pose robotTargetVelocity = fieldTargetVelocity.toRobotFrame(fieldCurrentPose.theta);
 
-
     effortX = xPID.update(robotErrorPose.x, robotTargetVelocity.x);
     effortY = yPID.update(robotErrorPose.y, robotTargetVelocity.y);
     effortTheta = thetaPID.update(robotErrorPose.theta, robotTargetVelocity.theta);
@@ -116,6 +120,8 @@ void AutoModeAgent_executeProfile(const MotionProfile& p) {
   }
 }
 
+
+
 void AutoModeAgent_holdStability(bool holdX, bool holdY, bool holdTheta) {
   Pose startPose = {OpticalFlow_getX(), OpticalFlow_getY(), OpticalFlow_getTheta()};
   
@@ -136,7 +142,6 @@ void AutoModeAgent_holdStability(bool holdX, bool holdY, bool holdTheta) {
                           -fieldErrorPose.theta
                           };
 
-
     if(holdX) effortX = xPID.update(robotErrorPose.x);
     if(holdY) effortY = yPID.update(robotErrorPose.y);
     if(holdTheta) effortTheta = thetaPID.update(robotErrorPose.theta);
@@ -150,4 +155,99 @@ void AutoModeAgent_holdStability(bool holdX, bool holdY, bool holdTheta) {
 
     delay(10);
   }
+}
+
+
+
+
+void drivetrain_set(Pose fieldTargetPose, Pose fieldTargetVelocity) {
+  static Pose startPose = {OpticalFlow_getX(), OpticalFlow_getY(), OpticalFlow_getTheta()};
+  static unsigned long startTime = millis();
+
+  float effortX = 0;
+  float effortY = 0;
+  float effortTheta = 0;
+
+  Pose fieldCurrentPose = {OpticalFlow_getX(), OpticalFlow_getY(), OpticalFlow_getTheta()};
+
+  unsigned long currentTime = millis();
+  float elapsedTime = (currentTime - startTime) / 1000.0;
+
+  Pose fieldErrorPose = (fieldStartPose + fieldTargetPose) - fieldCurrentPose;
+  Pose robotErrorPose = fieldErrorPose.toRobotFrame(fieldCurrentPose.theta);
+
+  Pose robotTargetVelocity = fieldTargetVelocity.toRobotFrame(fieldCurrentPose.theta);
+
+  effortX = xPID.update(robotErrorPose.x, robotTargetVelocity.x);
+  effortY = yPID.update(robotErrorPose.y, robotTargetVelocity.y);
+  effortTheta = thetaPID.update(robotErrorPose.theta, robotTargetVelocity.theta);
+
+  drivetrain.holonomicDrive(effortX, effortY, effortTheta);
+}
+
+
+
+
+void Pivot_executeProfile(const Profile& p) {
+  
+  TrapezoidalMotionProfile pivotProfile(p);
+
+  float startAngle = pivot.getPosition();
+
+  unsigned long startTime = millis();
+  
+  float effortPivot = 0;
+
+  while(true) {
+    float currentAngle = pivot.getPosition();
+
+    unsigned long currentTime = millis();
+    float elapsedTime = (currentTime - startTime) / 1000.0;
+
+    float targetAngle = pivotProfile.distance(elapsedTime);
+    float errorAngle =  (startAngle + targetAngle) - currentAngle;
+    float targetVelocity = pivotProfile.velocity(elapsedTime);
+
+    effortPivot = pivotPID.update(errorAngle, targetVelocity);
+
+    pivot.set(effortPivot);
+
+    //Serial.printf("time (S): %.2f of %.2f, start(ticks): %.1f, current(ticks): %.3f, effort: %.1f \n",elapsedTime,pivotProfile.totalTime(),startAngle,currentAngle,effortPivot);
+    Serial.printf("current(ticks):%.1f,target(ticks):%.1f\n",currentAngle,targetAngle);
+
+
+    if(elapsedTime > pivotProfile.totalTime()){
+      break;
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+  pivot.set(0);
+}
+
+
+void pivot_set(float targetAngle) {
+  static float startAngle = pivot.getPosition();
+  float effort = 0;
+
+  float currentAngle = pivot.getPosition();
+  float errorAngle =  (startAngle + targetAngle) - currentAngle;
+  effort = pivotPID.update(errorAngle);
+
+  pivot.set(effort);
+
+  //Serial.printf("start(ticks): %.1f  |  current(ticks): %.3f  |  effort: %.1f \n",startAngle,currentAngle,effort);
+}
+
+void elevator_set(float targetDistance) {
+  static float startDistance = elevator.getPosition();
+  float effort = 0;
+
+  float currentDistance = elevator.getPosition();
+  float errorDistance =  (startDistance + targetDistance) - currentDistance;
+  effort = elevatorPID.update(errorDistance);
+
+  elevator.set(effort + 0.2);
+
+  //Serial.printf("start(ticks): %.1f  |  current(ticks): %.3f  |  effort: %.1f \n",startDistance,currentDistance,effort);
 }

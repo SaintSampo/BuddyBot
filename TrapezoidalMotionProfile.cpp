@@ -11,7 +11,7 @@ TrapezoidalMotionProfile::TrapezoidalMotionProfile(Profile p) {
 
     da = (vmax * vmax - v0 * v0) / (2.0f * amax);
     dd = (vmax * vmax - vf * vf) / (2.0f * amax);
-    Serial.printf("d (m): %.3f  | da (m): %.3f  |  dd(m): %.3f \n",d,da,dd);
+    //Serial.printf("d (m): %.3f  | da (m): %.3f  |  dd(m): %.3f \n",d,da,dd);
 
     if (da + dd > d) {
         vpeak = sqrtf(max((2.0f * amax * d + v0 * v0 + vf * vf) / 2.0f, 0.0f));
@@ -27,8 +27,7 @@ TrapezoidalMotionProfile::TrapezoidalMotionProfile(Profile p) {
     ta = (vpeak - v0) / amax;
     tc = (dc > 0.0f) ? dc / vpeak : 0.0f;
     td = (vpeak - vf) / amax;
-    //Serial.printf("elapsedTime(S): %.3f  |  a (s): %.3f  |  b (S): %.2f  |  c (s): %.2f \n",elapsedTime,ta,tb,tc);
-    Serial.printf("a (s): %.3f  |  c (S): %.3f  |  d (s): %.3f \n",ta,tc,td);
+    //Serial.printf("a (s): %.3f  |  c (S): %.3f  |  d (s): %.3f \n",ta,tc,td);
     total_time = ta + tc + td;
 }
 

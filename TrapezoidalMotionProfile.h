@@ -10,6 +10,7 @@ struct Profile {
   float endRate;
   float maxAbsoluteRate;
   float maxAccel;
+  float minimumTime;
 };
 
 struct MotionProfile {

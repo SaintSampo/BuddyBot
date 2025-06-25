@@ -4,7 +4,6 @@
 QwiicOTOS myOtos;
 
 void OpticalFlow_begin(){
-    Wire.begin(PIN_I2C_SDA_QWIIC, PIN_I2C_SCL_QWIIC, 400000);
     
     // Attempt to begin the sensor
     while (myOtos.begin() == false)
@@ -21,7 +20,9 @@ void OpticalFlow_begin(){
     // Reset the tracking algorithm - this resets the position to the origin,
     myOtos.resetTracking();
 
-    sfe_otos_pose2d_t offsetPose = {0.05,0,0};
+    // For example, if the sensor is +50mm in the X direction from the center of the robot, offset would be {0.05,0,0}
+    sfe_otos_pose2d_t offsetPose = {0,0,0};
+
     myOtos.setOffset(offsetPose);
 }
 

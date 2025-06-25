@@ -8,6 +8,8 @@
 #include "DrivetrainHack.h"
 #include "PIDF.h"
 
+#include "Automodes.h"
+
 struct Pose {
   float x, y, theta;  // Position (x, y) and orientation (theta)
 
@@ -56,4 +58,7 @@ void AutoModeAgent_motionProfileTask(void *pvParameters);
 void AutoModeAgent_executeProfile(const MotionProfile &p);
 void AutoModeAgent_holdStability(bool holdX = true, bool holdY = true, bool holdAlpha = true);
 
+void pivot_set(float targetAngle);
+void elevator_set(float targetDistance);
+void Pivot_executeProfile(const Profile &p);
 #endif
