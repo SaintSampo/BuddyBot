@@ -38,6 +38,12 @@ float E_F = 0; // 1 effort ~= 2pi rad/s -> 1/2pi ~= 0.16
 
 PIDF elevatorPID(E_P, 0, E_D, E_F, -1, 1);
 
+MotionProfile leftTwoPiece = {
+  .x = { .target = 0.200, .startRate = 0, .endRate = 0, .maxAbsoluteRate = 0.080, .maxAccel = 3.00, .minimumTime = 0},
+  .y = { .target = 0.000, .startRate = 0, .endRate = 0, .maxAbsoluteRate = 0.300, .maxAccel = 1.500, .minimumTime = 0},
+  .theta = { .target = 2 * 3.14, .startRate = 0, .endRate = 0, .maxAbsoluteRate = 1 * 3.14, .maxAccel = 4 * 3.14, .minimumTime = 0}
+};
+
 // const int numProfiles = sizeof(motionProfiles) / sizeof(motionProfiles[0]);
 
 // void AutoModeAgent_begin() {

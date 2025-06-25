@@ -3,6 +3,7 @@
 #include "AutoModeAgent.h"
 #include "OpticalFlowAgent.h"
 #include "DrivetrainHack.h"
+#include "Automodes.h"
 
 #include <stdio.h>
 #include "driver/ledc.h"
@@ -153,7 +154,7 @@ void loop() {
 
   if (PestoLink.buttonHeld(0) || !digitalRead(0)) {
     Serial.println("starting Automode");
-    //AutoModeAgent_executeProfile(motionProfile);
+    AutoModeAgent_executeProfile(leftTwoPiece);
     //AutoModeAgent_begin();
     while(true){
       Pose fieldTargetPose = {0,0,0};

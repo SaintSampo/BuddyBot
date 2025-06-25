@@ -8,8 +8,6 @@
 #include "DrivetrainHack.h"
 #include "PIDF.h"
 
-#include "Automodes.h"
-
 struct Pose {
   float x, y, theta;  // Position (x, y) and orientation (theta)
 
