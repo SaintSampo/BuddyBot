@@ -38,37 +38,37 @@ float E_F = 0; // 1 effort ~= 2pi rad/s -> 1/2pi ~= 0.16
 
 PIDF elevatorPID(E_P, 0, E_D, E_F, -1, 1);
 
-const int numProfiles = sizeof(motionProfiles) / sizeof(motionProfiles[0]);
+// const int numProfiles = sizeof(motionProfiles) / sizeof(motionProfiles[0]);
 
-void AutoModeAgent_begin() {
-  TaskHandle_t currentMotionTaskHandle = nullptr;
+// void AutoModeAgent_begin() {
+//   TaskHandle_t currentMotionTaskHandle = nullptr;
 
-  for (int i = 0; i < numProfiles; ++i) {
-    Serial.printf("Launching Motion Profile %d\n", i);
+//   for (int i = 0; i < numProfiles; ++i) {
+//     Serial.printf("Launching Motion Profile %d\n", i);
 
-    xTaskCreatePinnedToCore(
-      AutoModeAgent_motionProfileTask, "MotionProfile", 4096,
-      &motionProfiles[i], 2, &currentMotionTaskHandle, 1);
+//     xTaskCreatePinnedToCore(
+//       AutoModeAgent_motionProfileTask, "MotionProfile", 4096,
+//       &motionProfiles[i], 2, &currentMotionTaskHandle, 1);
 
-    while (currentMotionTaskHandle != NULL && eTaskGetState(currentMotionTaskHandle) != eDeleted) {
-      vTaskDelay(pdMS_TO_TICKS(100));
-    }
-  }
+//     while (currentMotionTaskHandle != NULL && eTaskGetState(currentMotionTaskHandle) != eDeleted) {
+//       vTaskDelay(pdMS_TO_TICKS(100));
+//     }
+//   }
 
-  Serial.println("All motion profiles complete.");
-}
+//   Serial.println("All motion profiles complete.");
+// }
 
-void AutoModeAgent_motionProfileTask(void* pvParameters) {
-  MotionProfile* profile = static_cast<MotionProfile*>(pvParameters);
+// void AutoModeAgent_motionProfileTask(void* pvParameters) {
+//   MotionProfile* profile = static_cast<MotionProfile*>(pvParameters);
 
-  Serial.printf("Motion Profile started\n");
+//   Serial.printf("Motion Profile started\n");
 
-  AutoModeAgent_executeProfile(*profile);  // Pass by reference
+//   AutoModeAgent_executeProfile(*profile);  // Pass by reference
 
-  Serial.printf("Motion Profile completed\n");
+//   Serial.printf("Motion Profile completed\n");
 
-  vTaskDelete(NULL);
-}
+//   vTaskDelete(NULL);
+// }
 
 
 void AutoModeAgent_executeProfile(const MotionProfile& p) {
@@ -77,33 +77,16 @@ void AutoModeAgent_executeProfile(const MotionProfile& p) {
   TrapezoidalMotionProfile yProfile(p.y);
   TrapezoidalMotionProfile thetaProfile(p.theta);
 
-  Pose fieldStartPose = {OpticalFlow_getX(), OpticalFlow_getY(), OpticalFlow_getTheta()};
-
   unsigned long startTime = millis();
-  
-  float effortX = 0;
-  float effortY = 0;
-  float effortTheta = 0;
 
   while(true) {
-    Pose fieldCurrentPose = {OpticalFlow_getX(), OpticalFlow_getY(), OpticalFlow_getTheta()};
-
     unsigned long currentTime = millis();
     float elapsedTime = (currentTime - startTime) / 1000.0;
 
     Pose fieldTargetPose = {xProfile.distance(elapsedTime), yProfile.distance(elapsedTime), thetaProfile.distance(elapsedTime)};
-
-    Pose fieldErrorPose = (fieldStartPose + fieldTargetPose) - fieldCurrentPose;
-    Pose robotErrorPose = fieldErrorPose.toRobotFrame(fieldCurrentPose.theta);
-
     Pose fieldTargetVelocity = {xProfile.velocity(elapsedTime), yProfile.velocity(elapsedTime), thetaProfile.velocity(elapsedTime)};
-    Pose robotTargetVelocity = fieldTargetVelocity.toRobotFrame(fieldCurrentPose.theta);
 
-    effortX = xPID.update(robotErrorPose.x, robotTargetVelocity.x);
-    effortY = yPID.update(robotErrorPose.y, robotTargetVelocity.y);
-    effortTheta = thetaPID.update(robotErrorPose.theta, robotTargetVelocity.theta);
-
-    drivetrain.holonomicDrive(effortX, effortY, effortTheta);
+    drivetrain_set(fieldTargetPose, fieldTargetVelocity);
     
     //Serial.printf("elapsedTime(S): %.3f  |  X (s): %.3f  |  Y (S): %.2f  |  theta(s): %.2f \n",elapsedTime,xProfile.totalTime(), yProfile.totalTime(), thetaProfile.totalTime());
     //Serial.printf("time (S): %.2f of %.2f  |  startX(m): %.3f  |  currentX(m): %.3f  |  targetX(m): %.3f  |  errorX(m): %.3f  |  effortX(m): %.3f \n",elapsedTime,xProfile.totalTime(),startPose.x,currentPose.x,targetPose.x,fieldErrorPose.x,effortX);
@@ -121,48 +104,8 @@ void AutoModeAgent_executeProfile(const MotionProfile& p) {
 }
 
 
-
-void AutoModeAgent_holdStability(bool holdX, bool holdY, bool holdTheta) {
-  Pose startPose = {OpticalFlow_getX(), OpticalFlow_getY(), OpticalFlow_getTheta()};
-  
-  float effortX = 0;
-  float effortY = 0;
-  float effortTheta = 0;
-
-  while (true) {
-    Pose currentPose = {OpticalFlow_getX(), OpticalFlow_getY(), OpticalFlow_getTheta()};
-
-    Pose fieldErrorPose =  startPose - currentPose;
-
-    float cosTheta = cos(currentPose.theta);
-    float sinTheta = sin(currentPose.theta);
-    
-    Pose robotErrorPose = {fieldErrorPose.x * cosTheta + fieldErrorPose.y * sinTheta,
-                          -fieldErrorPose.x * sinTheta + fieldErrorPose.y * cosTheta,
-                          -fieldErrorPose.theta
-                          };
-
-    if(holdX) effortX = xPID.update(robotErrorPose.x);
-    if(holdY) effortY = yPID.update(robotErrorPose.y);
-    if(holdTheta) effortTheta = thetaPID.update(robotErrorPose.theta);
-
-    drivetrain.holonomicDrive(effortX, effortY, effortTheta);
-
-    //Serial.printf("x (m): %.3f  |  y (m): %.3f  |  theta (rad): %.2f \n",OpticalFlow_getX(),OpticalFlow_getY(), OpticalFlow_getTheta());
-    Serial.printf("x (m): %.3f  |  y (m): %.3f  |  theta (rad): %.2f \n",fieldErrorPose.x,fieldErrorPose.y,fieldErrorPose.theta);
-    //Serial.printf("startX(m) %.3f  |  currentX(m) %.3f  |  EfieldX(m) %.3f  |  ErobotX(m) %.3f  |  effort %.3f  |   \n",startPose.x,currentPose.x,fieldErrorPose.x,robotErrorPose.x,effortX);
-    //Serial.printf("start(rad) %.3f  |  current(rad) %.3f  |  Efield(rad) %.3f  |  Erobot(rad) %.3f  |  effort %.3f  |   \n",startPose.theta,currentPose.theta,fieldErrorPose.theta,robotErrorPose.theta,effortTheta);
-
-    delay(10);
-  }
-}
-
-
-
-
 void drivetrain_set(Pose fieldTargetPose, Pose fieldTargetVelocity) {
-  static Pose startPose = {OpticalFlow_getX(), OpticalFlow_getY(), OpticalFlow_getTheta()};
-  static unsigned long startTime = millis();
+  static Pose fieldStartPose = {OpticalFlow_getX(), OpticalFlow_getY(), OpticalFlow_getTheta()};
 
   float effortX = 0;
   float effortY = 0;
@@ -170,12 +113,8 @@ void drivetrain_set(Pose fieldTargetPose, Pose fieldTargetVelocity) {
 
   Pose fieldCurrentPose = {OpticalFlow_getX(), OpticalFlow_getY(), OpticalFlow_getTheta()};
 
-  unsigned long currentTime = millis();
-  float elapsedTime = (currentTime - startTime) / 1000.0;
-
   Pose fieldErrorPose = (fieldStartPose + fieldTargetPose) - fieldCurrentPose;
   Pose robotErrorPose = fieldErrorPose.toRobotFrame(fieldCurrentPose.theta);
-
   Pose robotTargetVelocity = fieldTargetVelocity.toRobotFrame(fieldCurrentPose.theta);
 
   effortX = xPID.update(robotErrorPose.x, robotTargetVelocity.x);
@@ -183,9 +122,11 @@ void drivetrain_set(Pose fieldTargetPose, Pose fieldTargetVelocity) {
   effortTheta = thetaPID.update(robotErrorPose.theta, robotTargetVelocity.theta);
 
   drivetrain.holonomicDrive(effortX, effortY, effortTheta);
+
+  Pose printPose = robotErrorPose;
+
+  Serial.printf("X: %.3f  |  Y: %.3f  |  theta: %.3f \n", printPose.x, printPose.y, printPose.theta);
 }
-
-
 
 
 void Pivot_executeProfile(const Profile& p) {

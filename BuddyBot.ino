@@ -18,15 +18,6 @@ NoU_Motor elevator(5);
 
 NoU_Drivetrain drivetrain(&frontLeftMotor, &frontRightMotor, &rearLeftMotor, &rearRightMotor);
 
-MotionProfile motionProfile = {
-  .x = { .target = 0.200, .startRate = 0, .endRate = 0, .maxAbsoluteRate = 0.080, .maxAccel = 3.00 },
-  .y = { .target = 0.000, .startRate = 0, .endRate = 0, .maxAbsoluteRate = 0.300, .maxAccel = 1.500 },
-  .theta = { .target = 2 * 3.14, .startRate = 0, .endRate = 0, .maxAbsoluteRate = 1 * 3.14, .maxAccel = 4 * 3.14 }
-};
-
-Profile pivotProfile = { .target = 600, .startRate = 0, .endRate = 0, .maxAbsoluteRate = 2000, .maxAccel = 8000 };
-
-
 
 #define LEDC_TIMER              LEDC_TIMER_3
 #define LEDC_MODE               LEDC_LOW_SPEED_MODE
@@ -73,6 +64,7 @@ void configTimer(){
 
 void setup() {
 
+  pinMode(0, INPUT_PULLUP);
   //configTimer();
 
   Wire.begin(PIN_I2C_SDA_QWIIC, PIN_I2C_SCL_QWIIC, 400000);
@@ -93,7 +85,7 @@ void setup() {
   elevator.beginEncoder();
 
   NoU3.calibrateIMUs();
-  //OpticalFlow_begin();
+  OpticalFlow_begin();
 
   frontLeftMotor.setInverted(true);
   rearLeftMotor.setInverted(true);
@@ -132,9 +124,13 @@ void loop() {
   //PestoLink.printfTerminal("optical(rad):%.3f,gyro(rad):%.3f\r\n", OpticalFlow_getTheta(), NoU3.yaw * 1.145);
   // Here we decide what the throttle and rotation direction will be based on gamepad inputs
   if (PestoLink.isConnected()) {
-    float fieldPowerX = -PestoLink.getAxis(0);
-    float fieldPowerY = PestoLink.getAxis(1);
+    float fieldPowerX = PestoLink.getAxis(0);
+    float fieldPowerY = -PestoLink.getAxis(1);
     float rotationPower = -PestoLink.getAxis(2);
+
+    if (PestoLink.buttonHeld(1)) rotationPower += -1;
+    if (PestoLink.buttonHeld(2)) rotationPower += 1;
+    
 
     // Get robot heading (in radians) from a gyro
     //float heading = OpticalFlow_getTheta();
@@ -154,10 +150,16 @@ void loop() {
     NoU3.setServiceLight(LIGHT_DISABLED);
   }
 
-  if (PestoLink.buttonHeld(0)) {
+
+  if (PestoLink.buttonHeld(0) || !digitalRead(0)) {
     Serial.println("starting Automode");
     //AutoModeAgent_executeProfile(motionProfile);
-    AutoModeAgent_begin();
+    //AutoModeAgent_begin();
+    while(true){
+      Pose fieldTargetPose = {0,0,0};
+      Pose fieldTargetVelocity = {0,0,0};
+      drivetrain_set(fieldTargetPose,fieldTargetVelocity);
+    }
   }
 
   static float elevatorTarget = 0;

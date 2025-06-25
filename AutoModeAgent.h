@@ -56,9 +56,10 @@ struct Pose {
 void AutoModeAgent_begin();
 void AutoModeAgent_motionProfileTask(void *pvParameters);
 void AutoModeAgent_executeProfile(const MotionProfile &p);
-void AutoModeAgent_holdStability(bool holdX = true, bool holdY = true, bool holdAlpha = true);
 
+void drivetrain_set(Pose fieldTargetPose, Pose fieldTargetVelocity);
 void pivot_set(float targetAngle);
 void elevator_set(float targetDistance);
 void Pivot_executeProfile(const Profile &p);
+
 #endif
