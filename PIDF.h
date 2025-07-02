@@ -17,7 +17,7 @@ private:
     float kp, ki, kd, kf;
     float min_output, max_output;
 
-    float prev_error;
+    float prev_error, integral;
     unsigned long start_time, prev_time;
 };
 

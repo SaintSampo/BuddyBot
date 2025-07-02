@@ -3,14 +3,18 @@
 // Create an Optical Tracking Odometry Sensor object
 QwiicOTOS myOtos;
 
+bool otosConnected = false;
 void OpticalFlow_begin(){
     
     // Attempt to begin the sensor
-    while (myOtos.begin() == false)
+    if (myOtos.begin() == false)
     {
         Serial.println("OTOS not connected, check your wiring and I2C address!");
-        delay(1000);
+        return;
     }
+
+    otosConnected = true;
+
     Serial.println("OTOS connected!");
     // Calibrate the IMU, which removes the accelerometer and gyroscope offsets
     myOtos.calibrateImu();
@@ -27,6 +31,8 @@ void OpticalFlow_begin(){
 }
 
 float OpticalFlow_getX(){
+    if(!otosConnected) return 0.0;
+
     sfe_otos_pose2d_t myPosition;
     myOtos.getPosition(myPosition);
 
@@ -34,6 +40,8 @@ float OpticalFlow_getX(){
 }
 
 float OpticalFlow_getY(){
+    if(!otosConnected) return 0.0;
+
     sfe_otos_pose2d_t myPosition;
     myOtos.getPosition(myPosition);
 
@@ -41,6 +49,8 @@ float OpticalFlow_getY(){
 }
 
 float OpticalFlow_getTheta() {
+    if(!otosConnected) return 0.0;
+
     sfe_otos_pose2d_t myPosition;
     myOtos.getPosition(myPosition);
     
@@ -65,6 +75,8 @@ float OpticalFlow_getTheta() {
 
 
 float OpticalFlow_getWrappedTheta(){
+    if(!otosConnected) return 0.0;
+
     sfe_otos_pose2d_t myPosition;
     myOtos.getPosition(myPosition);
 

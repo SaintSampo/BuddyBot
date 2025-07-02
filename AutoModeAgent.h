@@ -51,13 +51,25 @@ struct Pose {
   }
 };
 
-void AutoModeAgent_begin();
-void AutoModeAgent_motionProfileTask(void *pvParameters);
-void AutoModeAgent_executeProfile(const MotionProfile &p);
+struct ActuatorControl {
+  bool enableDrivetrain = false;
+  bool enablePivot = false;
+  bool enableElevator = false;
+
+  Pose targetPose;
+  Pose targetVelocity;
+
+  float pivotTarget = 0;
+  float elevatorTarget = 0;
+};
+
+void AutoModeAgent_beginControlTask(ActuatorControl* controlStatePtr);
+void AutoModeAgent_controlTask(void* pvParameters);
+void AutoModeAgent_begin(QueueHandle_t profileQueue);
+void AutoModeAgent_executeProfile(MotionProfile p);
 
 void drivetrain_set(Pose fieldTargetPose, Pose fieldTargetVelocity);
 void pivot_set(float targetAngle);
 void elevator_set(float targetDistance);
-void Pivot_executeProfile(const Profile &p);
 
 #endif

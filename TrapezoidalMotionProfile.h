@@ -10,13 +10,16 @@ struct Profile {
   float endRate;
   float maxAbsoluteRate;
   float maxAccel;
-  float minimumTime;
 };
 
 struct MotionProfile {
   Profile x;
   Profile y;
   Profile theta;
+  float elevator;
+  float pivot;
+  float intake;
+  float minimumTimeMs;
 };
 
 class TrapezoidalMotionProfile {

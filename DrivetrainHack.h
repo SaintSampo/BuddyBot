@@ -4,6 +4,7 @@
 
 #include <Arduino.h>
 #include <Alfredo_NoU3.h>
+#include "AutoModeAgent.h"
 
 extern NoU_Drivetrain drivetrain;
 extern NoU_Motor pivot;

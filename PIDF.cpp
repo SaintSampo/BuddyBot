@@ -10,6 +10,7 @@ PIDF::PIDF(float kp, float ki, float kd, float kf,
     this->max_output = max_output;
 
     this->prev_error = 0;
+    this->integral = 0;
 
     this->start_time = 0;
     this->prev_time = 0;
@@ -29,12 +30,20 @@ float PIDF::update(float error, float velocity) {
 
     this->prev_time = current_time;
 
+    // Derivative
     float derivative = 0;
-    if(timestep != 0) derivative = (error - this->prev_error) / timestep;
+    if (timestep != 0) derivative = (error - this->prev_error) / timestep;
+
+    // Integral
+    this->integral += error * timestep;
+
+    // Optional: clamp integral to avoid windup
+    float max_integral = 1000;  // adjust as needed
+    if (this->integral > max_integral) this->integral = max_integral;
+    if (this->integral < -max_integral) this->integral = -max_integral;
 
     // Calculate output
-    //float output = this->kp * error + this->ki * this->prev_integral + this->kd * derivative;
-    float output = this->kp * error + this->kd * derivative + this->kf * velocity;
+    float output = this->kp * error + this->ki * this->integral + this->kd * derivative + this->kf * velocity;
     this->prev_error = error;
 
     // Bound output by min and max values
