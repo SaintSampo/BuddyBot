@@ -14,8 +14,9 @@ NoU_Motor frontRightMotor(2);
 NoU_Motor rearLeftMotor(8);
 NoU_Motor rearRightMotor(1);
 
-NoU_Motor pivot(4);
 NoU_Motor elevator(5);
+NoU_Motor pivot(4);
+NoU_Motor intake(3);
 
 NoU_Drivetrain drivetrain(&frontLeftMotor, &frontRightMotor, &rearLeftMotor, &rearRightMotor);
 
@@ -23,34 +24,20 @@ ActuatorControl controlState = {
   .enableDrivetrain = false,
   .enablePivot = false,
   .enableElevator = false,
+
   .targetPose = {0,0,0},
   .targetVelocity {0,0,0},
-  .pivotTarget = 0.0f,
-  .elevatorTarget = 0.0f
+  .elevatorTarget = 0.0f,
+  .pivotTarget = 0.0f
 };
 
-QueueHandle_t leftCoralAuto;
-QueueHandle_t leftCoralAutoReverse;
-
-void createAutomodes() {
-  // Create queue to hold MotionProfile objects
-  leftCoralAuto = xQueueCreate(10, sizeof(MotionProfile));
-  leftCoralAutoReverse = xQueueCreate(10, sizeof(MotionProfile));
-
-  // Enqueue profiles
-  xQueueSend(leftCoralAuto, &approachWP, 0);
-  xQueueSend(leftCoralAuto, &lineWP, 0);
-
-  xQueueSend(leftCoralAutoReverse, &approachWP, 0);
-  xQueueSend(leftCoralAutoReverse, &startWP, 0);
-}
+QueueHandle_t AutoQueue;
 
 void setup() {
   Serial.begin(115200);
   PestoLink.begin("BuddyBot");
 
   pinMode(0, INPUT_PULLUP);
-  createAutomodes();
 
   NoU3.begin();
 
@@ -61,8 +48,11 @@ void setup() {
   elevator.setInverted(true);
   elevator.setBrakeMode(true);
   drivetrain.setMotorCurves(0.25, 1, 0.2, 1);
-
+  
+  //controlState.enablePivot = true;
+  //controlState.enableElevator = true;
   AutoModeAgent_beginControlTask(&controlState);
+  AutoQueue = xQueueCreate(10, sizeof(MotionProfile));
 
   OpticalFlow_begin();
   NoU3.calibrateIMUs(); // takes 1000ms
@@ -96,10 +86,9 @@ void loop() {
     float fieldPowerY = -PestoLink.getAxis(1);
     float rotationPower = -PestoLink.getAxis(2);
 
-    if (PestoLink.buttonHeld(1)) rotationPower += -1;
-    if (PestoLink.buttonHeld(2)) rotationPower += 1;
+    //if (PestoLink.buttonHeld(1)) rotationPower += -1;
+    //if (PestoLink.buttonHeld(2)) rotationPower += 1;
     
-
     // Get robot heading (in radians) from a gyro
     //float heading = OpticalFlow_getTheta();
     float heading = NoU3.yaw * angular_scale;
@@ -120,31 +109,31 @@ void loop() {
 
 
   if (PestoLink.buttonHeld(0) || !digitalRead(0)) {
-    Serial.println("starting Automode");
-    AutoModeAgent_beginControlTask(&controlState);
-    AutoModeAgent_begin(leftCoralAuto);
-    //AutoModeAgent_begin();
-    Serial.println("Ending Automode");
+    xQueueSend(AutoQueue, &approachWP, 0);
+    xQueueSend(AutoQueue, &lineWP, 0);
+
+    AutoModeAgent_begin(AutoQueue);
   }
 
   if (PestoLink.buttonHeld(1) ) {
-    Serial.println("starting Automode");
-    //AutoModeAgent_beginControlTask(&controlState);
-    AutoModeAgent_begin(leftCoralAutoReverse);
-    //AutoModeAgent_begin();
-    Serial.println("Ending Automode");
+    xQueueSend(AutoQueue, &approachWP, 0);
+    xQueueSend(AutoQueue, &startWP, 0);
+
+    AutoModeAgent_begin(AutoQueue);
   }
 
-  static float elevatorTarget = 0;
-  static float pivotTarget = 0;
 
-  if(PestoLink.buttonHeld(3))       controlState.elevatorTarget = 1800;
-  else if (PestoLink.buttonHeld(1)) controlState.elevatorTarget = 900;
-  else if (PestoLink.buttonHeld(0)) controlState.elevatorTarget = 0;
+  if(PestoLink.buttonHeld(3))       intake.set(-0.8);
+  else if (PestoLink.buttonHeld(2)) intake.set(1);
+  else                              intake.set(0);
 
-  if(PestoLink.buttonHeld(6))       controlState.pivotTarget = 800;
-  else if (PestoLink.buttonHeld(5)) controlState.pivotTarget = 400;
-  else if (PestoLink.buttonHeld(4)) controlState.pivotTarget = 0;
+  // if(PestoLink.buttonHeld(3))       controlState.elevatorTarget = 1800;
+  // else if (PestoLink.buttonHeld(1)) controlState.elevatorTarget = 900;
+  // else if (PestoLink.buttonHeld(0)) controlState.elevatorTarget = 0;
+
+  // if(PestoLink.buttonHeld(6))       controlState.pivotTarget = 800;
+  // else if (PestoLink.buttonHeld(5)) controlState.pivotTarget = 400;
+  // else if (PestoLink.buttonHeld(4)) controlState.pivotTarget = 0;
 
 }
 

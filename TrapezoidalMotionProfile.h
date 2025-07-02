@@ -19,7 +19,7 @@ struct MotionProfile {
   float elevator;
   float pivot;
   float intake;
-  float minimumTimeMs;
+  float minimumTime;
 };
 
 class TrapezoidalMotionProfile {

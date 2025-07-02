@@ -59,8 +59,8 @@ struct ActuatorControl {
   Pose targetPose;
   Pose targetVelocity;
 
-  float pivotTarget = 0;
   float elevatorTarget = 0;
+  float pivotTarget = 0;
 };
 
 void AutoModeAgent_beginControlTask(ActuatorControl* controlStatePtr);
@@ -69,7 +69,7 @@ void AutoModeAgent_begin(QueueHandle_t profileQueue);
 void AutoModeAgent_executeProfile(MotionProfile p);
 
 void drivetrain_set(Pose fieldTargetPose, Pose fieldTargetVelocity);
-void pivot_set(float targetAngle);
 void elevator_set(float targetDistance);
+void pivot_set(float targetAngle);
 
 #endif

@@ -1,21 +1,21 @@
 #include "AutoModeAgent.h"
 
-float X_Ku = 60.0 * 0.2;
+float X_Ku = 60.0 * 0.5;
 float X_Tu = 1.0/(150.0/60.0); //Period = 1/(BPM/60), BPM is measuring full cycles per minute
-float X_P = 0.6 * X_Ku;
-float X_I = 0.5 * X_Tu;
-float X_D = 0.125 * X_Tu;
-float X_F = 1.0/1.15; // 1 effort ~= 0.8 m/s
+float X_P = 0.6 * X_Ku; //0.6 * X_Ku;
+float X_I = 0.5 * X_Tu; //0.5 * X_Tu;
+float X_D = 0.125 * X_Tu; //0.125 * X_Tu;
+float X_F = 1.0/0.85; // 1 effort ~= 0.85 m/s
 
 PIDF xPID(X_P, X_I, X_D, X_F, -1.0, 1.0);
 PIDF yPID(X_P, X_I, X_D, X_F, -1.0, 1.0);
 
 float T_Ku = 2.8 * 0.8;
 float T_Tu = 1.0/(130.0/60.0); //Period = 1/(BPM/60), BPM is measuring full cycles per minute
-float T_P = 0.6 * T_Ku;
-float T_I = 0.5 * T_Tu;
-float T_D = 0.125 * T_Tu;
-float T_F = 0.32; // 1 effort ~= pi rad/s -> 1/pi ~= 0.32
+float T_P = 0.6 * T_Ku; //0.6 * X_Ku;
+float T_I = 0.5 * T_Tu; //0.5 * X_Tu;
+float T_D = 0.125 * T_Tu; //0.125 * X_Tu;
+float T_F = 1/3.14; // 1 effort ~= 1*pi rad/s
 
 PIDF thetaPID(T_P, T_I, T_D, T_F, -1.0, 1.0);
 
@@ -75,31 +75,16 @@ void AutoModeAgent_begin(QueueHandle_t profileQueue) {
     return;
   }
 
-  Serial.println("Running motion profiles");
-
   controlStatePtr->enableDrivetrain = true;
-  controlStatePtr->enablePivot = true;
-  controlStatePtr->enableElevator = true;
 
   MotionProfile profile;
-  while (xQueueReceive(profileQueue, &profile, 0) == pdPASS) {
-    Serial.println("Executing profile ");
-    
+  while (xQueueReceive(profileQueue, &profile, 0) == pdPASS) {  
     AutoModeAgent_executeProfile(profile);
     lastFieldEndPose = {profile.x.target, profile.y.target, profile.theta.target};
-
-    Serial.println("Motion profile completed");
   }
 
   controlStatePtr->enableDrivetrain = false;
-  controlStatePtr->enablePivot = false;
-  controlStatePtr->enableElevator = false;
-
   drivetrain.holonomicDrive(0, 0, 0);
-  elevator.set(0);
-  pivot.set(0);
-
-  Serial.println("All motion profiles completed");
 }
 
 
@@ -123,7 +108,7 @@ void AutoModeAgent_executeProfile(MotionProfile p) {
   Serial.printf("maxTime(S): %.3f \n", maxTime);
   maxTime = max(maxTime, thetaProfile.totalTime());
   Serial.printf("maxTime(S): %.3f \n", maxTime);
-  maxTime = max(maxTime, p.minimumTimeMs);
+  maxTime = max(maxTime, p.minimumTime);
 
   Serial.printf("maxTime(S): %.3f \n", maxTime);
   while(elapsedTime <= maxTime) {
@@ -166,6 +151,19 @@ void drivetrain_set(Pose fieldJournyPose, Pose fieldTargetVelocity) {
   Serial.printf("X: %.3f  |  Y: %.3f  |  theta: %.3f \n", printPose.x, printPose.y, printPose.theta);
 }
 
+void elevator_set(float targetDistance) {
+  static float startDistance = elevator.getPosition();
+  float effort = 0;
+
+  float currentDistance = elevator.getPosition();
+  float errorDistance =  (startDistance + targetDistance) - currentDistance;
+  effort = elevatorPID.update(errorDistance);
+
+  elevator.set(effort + 0.2);
+
+  //Serial.printf("start(ticks): %.1f  |  current(ticks): %.3f  |  effort: %.1f \n",startDistance,currentDistance,effort);
+}
+
 void pivot_set(float targetAngle) {
   static float startAngle = pivot.getPosition();
   float effort = 0;
@@ -179,18 +177,6 @@ void pivot_set(float targetAngle) {
   //Serial.printf("start(ticks): %.1f  |  current(ticks): %.3f  |  effort: %.1f \n",startAngle,currentAngle,effort);
 }
 
-void elevator_set(float targetDistance) {
-  static float startDistance = elevator.getPosition();
-  float effort = 0;
-
-  float currentDistance = elevator.getPosition();
-  float errorDistance =  (startDistance + targetDistance) - currentDistance;
-  effort = elevatorPID.update(errorDistance);
-
-  elevator.set(effort + 0.2);
-
-  //Serial.printf("start(ticks): %.1f  |  current(ticks): %.3f  |  effort: %.1f \n",startDistance,currentDistance,effort);
-}
 
 // void Pivot_executeProfile(const Profile& p) {
   
