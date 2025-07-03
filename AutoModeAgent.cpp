@@ -19,23 +19,21 @@ float T_F = 1/3.14; // 1 effort ~= 1*pi rad/s
 
 PIDF thetaPID(T_P, T_I, T_D, T_F, -1.0, 1.0);
 
-float P_Ku = 2.0; //0.18 when FF is used
+float P_Ku = 0.2; //0.18 when FF is used
 float P_Tu = 1.0/(200.0/60.0); //Period = 1/(BPM/60), BPM is measuring full cycles per minute
 
 float P_P = 0.6 * P_Ku;
-float P_D = 0.075 * P_Tu;
-float P_F = 0.16; // 1 effort ~= 2pi rad/s -> 1/2pi ~= 0.16
+float P_D = 0.125 * P_Tu;
 
-PIDF pivotPID(P_P, 0, 0, P_F, -1, 1);
+PIDF pivotPID(P_P, 0, P_D, 0, -1, 1);
 
-float E_Ku = 0.11;
+float E_Ku = 0.06;
 float E_Tu = 1.0/(250.0/60.0); //Period = 1/(BPM/60), BPM is measuring full cycles per minute
 
 float E_P = 0.6 * E_Ku;
-float E_D = 0.075 * E_Tu;
-float E_F = 0; // 1 effort ~= 2pi rad/s -> 1/2pi ~= 0.16
+float E_D = 0.125 * E_Tu;
 
-PIDF elevatorPID(E_P, 0, E_D, E_F, -1, 1);
+PIDF elevatorPID(E_P, 0, 0, 0, -1, 1);
 
 ActuatorControl* controlStatePtr;
 

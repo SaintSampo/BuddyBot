@@ -21,9 +21,9 @@ NoU_Motor intake(3);
 NoU_Drivetrain drivetrain(&frontLeftMotor, &frontRightMotor, &rearLeftMotor, &rearRightMotor);
 
 typedef enum {
-  STATE_LOW = 0,
-  STATE_ALGEA = 1,
-  STATE_CORAL = 2,
+  STATE_ALGEA = 0,
+  STATE_CORAL = 1,
+  STATE_LOW = 2,
   STATE_HIGH = 3,
   TOGGLE_ENABLE = 4,
   STATE_SCORE = 5,
@@ -60,7 +60,7 @@ void setup() {
   frontLeftMotor.setInverted(true);
   rearLeftMotor.setInverted(true);
   elevator.setInverted(true);
-  elevator.setBrakeMode(true);
+  //elevator.setBrakeMode(true);
   drivetrain.setMotorCurves(0.25, 1, 0.2, 1);
   
   //controlState.enableActuation = true;
@@ -126,11 +126,22 @@ void loop() {
     AutoModeAgent_begin(AutoQueue);
   }
 
-  if(PestoLink.buttonHeld(STATE_LOW)) controlState.highMode = false;
-  if(PestoLink.buttonHeld(STATE_HIGH)) controlState.highMode = true;
-
-  if(PestoLink.buttonHeld(STATE_ALGEA)) controlState.coralMode = false;
-  if(PestoLink.buttonHeld(STATE_CORAL)) controlState.coralMode = true;
+  if(PestoLink.buttonHeld(STATE_LOW)){
+    controlState.highMode = false;
+    PestoLink.printfTerminal("state low");
+  }
+  if(PestoLink.buttonHeld(STATE_HIGH)){
+    controlState.highMode = true;
+    PestoLink.printfTerminal("state high");
+  }
+  if(PestoLink.buttonHeld(STATE_ALGEA)){
+    controlState.coralMode = false;
+    PestoLink.printfTerminal("state algea");
+  }
+  if(PestoLink.buttonHeld(STATE_CORAL)){
+    controlState.coralMode = true;
+    PestoLink.printfTerminal("state coral");
+  }
 
   if(PestoLink.buttonHeld(STATE_APPROACH)){
     if(controlState.coralMode){
@@ -201,15 +212,18 @@ void loop() {
   //intake pressed
   if(stateIntake && !lastStateIntake) {
     if(controlState.coralMode){
+      PestoLink.printfTerminal("Intaking Coral");
       controlState.elevatorTarget = 900;
       controlState.pivotTarget = 400;
       controlState.intakePower = -0.8;
     } else { //algea mode
       if(controlState.highMode) {
+        PestoLink.printfTerminal("Intaking High Algae");
         controlState.elevatorTarget = 1800;
         controlState.pivotTarget = 800;
         controlState.intakePower = -0.8;
       } else {
+        PestoLink.printfTerminal("Intaking Low Algae");
         controlState.elevatorTarget = 900;
         controlState.pivotTarget = 800;
         controlState.intakePower = -0.8;
