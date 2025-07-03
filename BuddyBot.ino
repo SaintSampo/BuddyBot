@@ -20,15 +20,29 @@ NoU_Motor intake(3);
 
 NoU_Drivetrain drivetrain(&frontLeftMotor, &frontRightMotor, &rearLeftMotor, &rearRightMotor);
 
+typedef enum {
+  STATE_LOW = 0,
+  STATE_ALGEA = 1,
+  STATE_CORAL = 2,
+  STATE_HIGH = 3,
+  TOGGLE_ENABLE = 4,
+  STATE_SCORE = 5,
+  STATE_INTAKE = 6,
+  STATE_APPROACH = 7
+} pestoButtons;
+
 ActuatorControl controlState = {
+  .coralMode = false,
+  .highMode = false,
+  
   .enableDrivetrain = false,
-  .enablePivot = false,
-  .enableElevator = false,
+  .enableActuation = false,
 
   .targetPose = {0,0,0},
   .targetVelocity {0,0,0},
   .elevatorTarget = 0.0f,
-  .pivotTarget = 0.0f
+  .pivotTarget = 0.0f,
+  .intakePower = 0.0f
 };
 
 QueueHandle_t AutoQueue;
@@ -49,8 +63,7 @@ void setup() {
   elevator.setBrakeMode(true);
   drivetrain.setMotorCurves(0.25, 1, 0.2, 1);
   
-  //controlState.enablePivot = true;
-  //controlState.enableElevator = true;
+  //controlState.enableActuation = true;
   AutoModeAgent_beginControlTask(&controlState);
   AutoQueue = xQueueCreate(10, sizeof(MotionProfile));
 
@@ -66,28 +79,20 @@ void loop() {
 
   if (lastPrintTime + 100 < millis()) {
     //Serial.printf("yaw(rad):%.3f,pitch(rad):%.3f,roll(rad):%.3f\r\n", NoU3.yaw, NoU3.pitch, NoU3.roll);
-    //Serial.printf("optical(rad):%.3f,gyro(rad):%.3f\r\n", OpticalFlow_getTheta(), NoU3.yaw * 1.145);
-    //Serial.printf("optical(rad):%.3f,difference(rad):%.3f\r\n", OpticalFlow_getTheta(), OpticalFlow_getTheta() /(NoU3.yaw * (PI/180.0)));
     //PestoLink.printfTerminal("yaw(rad):%.3f,adjusted_yaw(rad):%.3f\r\n",NoU3.yaw,NoU3.yaw*angular_scale);
-    PestoLink.printfTerminal("X(m):%.3f, Y(m):%.3f, theta(rad):%.3f\r\n", OpticalFlow_getX(), OpticalFlow_getY(),  OpticalFlow_getTheta());
+    //PestoLink.printfTerminal("X(m):%.3f, Y(m):%.3f, theta(rad):%.3f\r\n", OpticalFlow_getX(), OpticalFlow_getY(),  OpticalFlow_getTheta());
     lastPrintTime = millis();
   }
 
-  // This measures your batteries voltage and sends it to PestoLink
-  // You could use this value for a lot of cool things, for example make LEDs flash when your batteries are low?
+  // Measures battery voltage and sends it to PestoLink
   float batteryVoltage = NoU3.getBatteryVoltage();
   PestoLink.printBatteryVoltage(batteryVoltage);
 
-  //PestoLink.printTerminal("optical(rad):,");
-  //PestoLink.printfTerminal("optical(rad):%.3f,gyro(rad):%.3f\r\n", OpticalFlow_getTheta(), NoU3.yaw * 1.145);
   // Here we decide what the throttle and rotation direction will be based on gamepad inputs
   if (PestoLink.isConnected()) {
     float fieldPowerX = PestoLink.getAxis(0);
     float fieldPowerY = -PestoLink.getAxis(1);
     float rotationPower = -PestoLink.getAxis(2);
-
-    //if (PestoLink.buttonHeld(1)) rotationPower += -1;
-    //if (PestoLink.buttonHeld(2)) rotationPower += 1;
     
     // Get robot heading (in radians) from a gyro
     //float heading = OpticalFlow_getTheta();
@@ -107,33 +112,128 @@ void loop() {
     NoU3.setServiceLight(LIGHT_DISABLED);
   }
 
-
-  if (PestoLink.buttonHeld(0) || !digitalRead(0)) {
+  if (PestoLink.keyHeld(Key::Q) || !digitalRead(0)) {
     xQueueSend(AutoQueue, &approachWP, 0);
     xQueueSend(AutoQueue, &lineWP, 0);
 
     AutoModeAgent_begin(AutoQueue);
   }
 
-  if (PestoLink.buttonHeld(1) ) {
+  if (PestoLink.keyHeld(Key::W) ) {
     xQueueSend(AutoQueue, &approachWP, 0);
     xQueueSend(AutoQueue, &startWP, 0);
 
     AutoModeAgent_begin(AutoQueue);
   }
 
+  if(PestoLink.buttonHeld(STATE_LOW)) controlState.highMode = false;
+  if(PestoLink.buttonHeld(STATE_HIGH)) controlState.highMode = true;
 
-  if(PestoLink.buttonHeld(3))       intake.set(-0.8);
-  else if (PestoLink.buttonHeld(2)) intake.set(1);
-  else                              intake.set(0);
+  if(PestoLink.buttonHeld(STATE_ALGEA)) controlState.coralMode = false;
+  if(PestoLink.buttonHeld(STATE_CORAL)) controlState.coralMode = true;
 
-  // if(PestoLink.buttonHeld(3))       controlState.elevatorTarget = 1800;
-  // else if (PestoLink.buttonHeld(1)) controlState.elevatorTarget = 900;
-  // else if (PestoLink.buttonHeld(0)) controlState.elevatorTarget = 0;
+  if(PestoLink.buttonHeld(STATE_APPROACH)){
+    if(controlState.coralMode){
+      if(controlState.highMode) {
+        controlState.elevatorTarget = 1600;
+        controlState.pivotTarget = 600;
+        controlState.intakePower = -0.8;
+      } else {
+        controlState.elevatorTarget = 900;
+        controlState.pivotTarget = 600;
+        controlState.intakePower = -0.8;
+      }
+    } else { //algea mode
+      if(controlState.highMode) {
+        controlState.elevatorTarget = 1800;
+        controlState.pivotTarget = 600;
+        controlState.intakePower = -0.8;
+      } else {
+        controlState.elevatorTarget = 0;
+        controlState.pivotTarget = 200;
+        controlState.intakePower = -0.8;
+      }
+    }
+  }
 
-  // if(PestoLink.buttonHeld(6))       controlState.pivotTarget = 800;
-  // else if (PestoLink.buttonHeld(5)) controlState.pivotTarget = 400;
-  // else if (PestoLink.buttonHeld(4)) controlState.pivotTarget = 0;
+  static bool lastStateIntake = false;
+  static bool lastStateScore = false;
+  static bool lastToggleEnable = false;
+  bool stateIntake = PestoLink.buttonHeld(STATE_INTAKE);
+  bool stateScore = PestoLink.buttonHeld(STATE_SCORE);
+  bool toggleEnable = PestoLink.buttonHeld(TOGGLE_ENABLE);
+
+  //toggle enable pressed
+  if(toggleEnable && !lastToggleEnable) {
+    if(controlState.enableActuation){
+      PestoLink.printfTerminal("disabling actuators");
+      controlState.enableActuation = false;
+    } else {
+      PestoLink.printfTerminal("enabling actuators");
+      controlState.enableActuation = true;
+    }
+  }
+
+  if(stateScore){
+    if(controlState.coralMode){
+      if(controlState.highMode) {
+        controlState.elevatorTarget = 1600;
+        controlState.pivotTarget = 800;
+        controlState.intakePower = 1;
+      } else {
+        controlState.elevatorTarget = 900;
+        controlState.pivotTarget = 800;
+        controlState.intakePower = 1;
+      }
+    } else { //algea mode
+      if(controlState.highMode) {
+        controlState.elevatorTarget = 1800;
+        controlState.pivotTarget = 800;
+        controlState.intakePower = 1;
+      } else {
+        controlState.elevatorTarget = 0;
+        controlState.pivotTarget = 200;
+        controlState.intakePower = 1;
+      }
+    }
+  }
+
+  //intake pressed
+  if(stateIntake && !lastStateIntake) {
+    if(controlState.coralMode){
+      controlState.elevatorTarget = 900;
+      controlState.pivotTarget = 400;
+      controlState.intakePower = -0.8;
+    } else { //algea mode
+      if(controlState.highMode) {
+        controlState.elevatorTarget = 1800;
+        controlState.pivotTarget = 800;
+        controlState.intakePower = -0.8;
+      } else {
+        controlState.elevatorTarget = 900;
+        controlState.pivotTarget = 800;
+        controlState.intakePower = -0.8;
+      }
+    }
+  }
+
+  //stow position, intake released, or score released
+  if((!stateIntake && lastStateIntake) || (!stateScore && lastStateScore)) {
+    if(controlState.coralMode){
+      controlState.elevatorTarget = 0;
+      controlState.pivotTarget = 400;
+      controlState.intakePower = -0.8;
+    } else { //algea mode
+      controlState.elevatorTarget = 0;
+      controlState.pivotTarget = 400;
+      controlState.intakePower = -0.8;
+    }
+  }
+
+  lastStateIntake = stateIntake;
+  lastStateScore = stateScore;
+  lastToggleEnable = toggleEnable;
+
 
 }
 

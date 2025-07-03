@@ -52,15 +52,17 @@ struct Pose {
 };
 
 struct ActuatorControl {
-  bool enableDrivetrain = false;
-  bool enablePivot = false;
-  bool enableElevator = false;
+  bool coralMode;
+  bool highMode;
+  bool enableDrivetrain;
+  bool enableActuation;
 
   Pose targetPose;
   Pose targetVelocity;
 
-  float elevatorTarget = 0;
-  float pivotTarget = 0;
+  float elevatorTarget;
+  float pivotTarget;
+  float intakePower;
 };
 
 void AutoModeAgent_beginControlTask(ActuatorControl* controlStatePtr);

@@ -9,5 +9,5 @@
 extern NoU_Drivetrain drivetrain;
 extern NoU_Motor pivot;
 extern NoU_Motor elevator;
-
+extern NoU_Motor intake;
 #endif // DRIVETRAIN_HACK_H

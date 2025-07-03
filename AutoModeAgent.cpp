@@ -59,9 +59,18 @@ void AutoModeAgent_controlTask(void* pvParameters) {
   Serial.println("Actuator control task started");
 
   for (;;) {
-    if (controlStatePtr->enableDrivetrain) drivetrain_set(controlStatePtr->targetPose, controlStatePtr->targetVelocity);
-    if (controlStatePtr->enablePivot) pivot_set(controlStatePtr->pivotTarget);
-    if (controlStatePtr->enableElevator) elevator_set(controlStatePtr->elevatorTarget);
+    if (controlStatePtr->enableDrivetrain){
+      drivetrain_set(controlStatePtr->targetPose, controlStatePtr->targetVelocity);
+    }
+    if (controlStatePtr->enableActuation){
+      pivot_set(controlStatePtr->pivotTarget);
+      elevator_set(controlStatePtr->elevatorTarget);
+      intake.set(controlStatePtr->intakePower);
+    } else {
+      pivot.set(0);
+      elevator.set(0);
+      intake.set(0);
+    }
 
     vTaskDelay(pdMS_TO_TICKS(10));
   }
