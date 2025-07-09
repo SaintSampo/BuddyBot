@@ -1,11 +1,11 @@
 #include "AutoModeAgent.h"
 
-float X_Ku = 60.0 * 0.5;
+float X_Ku = 50.0 * 0.5;
 float X_Tu = 1.0/(150.0/60.0); //Period = 1/(BPM/60), BPM is measuring full cycles per minute
 float X_P = 0.6 * X_Ku; //0.6 * X_Ku;
 float X_I = 0.5 * X_Tu; //0.5 * X_Tu;
 float X_D = 0.125 * X_Tu; //0.125 * X_Tu;
-float X_F = 1.0/0.85; // 1 effort ~= 0.85 m/s
+float X_F = 1.5; // 1 effort ~= 0.85 m/s
 
 PIDF xPID(X_P, X_I, X_D, X_F, -1.0, 1.0);
 PIDF yPID(X_P, X_I, X_D, X_F, -1.0, 1.0);
@@ -19,15 +19,15 @@ float T_F = 1/3.14; // 1 effort ~= 1*pi rad/s
 
 PIDF thetaPID(T_P, T_I, T_D, T_F, -1.0, 1.0);
 
-float P_Ku = 0.2; //0.18 when FF is used
-float P_Tu = 1.0/(200.0/60.0); //Period = 1/(BPM/60), BPM is measuring full cycles per minute
+float P_Ku = 0.015;
+float P_Tu = 1.0/(150.0/60.0); //Period = 1/(BPM/60), BPM is measuring full cycles per minute
 
 float P_P = 0.6 * P_Ku;
 float P_D = 0.125 * P_Tu;
 
 PIDF pivotPID(P_P, 0, P_D, 0, -1, 1);
 
-float E_Ku = 0.06;
+float E_Ku = 0.05;
 float E_Tu = 1.0/(250.0/60.0); //Period = 1/(BPM/60), BPM is measuring full cycles per minute
 
 float E_P = 0.6 * E_Ku;
@@ -83,9 +83,13 @@ void AutoModeAgent_begin(QueueHandle_t profileQueue) {
   }
 
   controlStatePtr->enableDrivetrain = true;
+  controlStatePtr->enableActuation = true;
 
   MotionProfile profile;
   while (xQueueReceive(profileQueue, &profile, 0) == pdPASS) {  
+    controlStatePtr->elevatorTarget = profile.elevator;
+    controlStatePtr->pivotTarget = profile.pivot;
+    controlStatePtr->intakePower = profile.intake;
     AutoModeAgent_executeProfile(profile);
     lastFieldEndPose = {profile.x.target, profile.y.target, profile.theta.target};
   }
@@ -155,7 +159,8 @@ void drivetrain_set(Pose fieldJournyPose, Pose fieldTargetVelocity) {
 
   Pose printPose = fieldCurrentPose;
 
-  Serial.printf("X: %.3f  |  Y: %.3f  |  theta: %.3f \n", printPose.x, printPose.y, printPose.theta);
+  PestoLink.printfTerminal("X: %.3f  |  Y: %.3f  |  theta: %.3f \n", printPose.x, printPose.y, printPose.theta);
+  //Serial.printf("X: %.3f  |  Y: %.3f  |  theta: %.3f \n", printPose.x, printPose.y, printPose.theta);
 }
 
 void elevator_set(float targetDistance) {

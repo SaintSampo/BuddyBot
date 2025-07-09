@@ -5,10 +5,6 @@
 #include "DrivetrainHack.h"
 #include "Automodes.h"
 
-#include <stdio.h>
-#include "driver/ledc.h"
-#include "esp_err.h"
-
 NoU_Motor frontLeftMotor(7);
 NoU_Motor frontRightMotor(2);
 NoU_Motor rearLeftMotor(8);
@@ -28,7 +24,8 @@ typedef enum {
   TOGGLE_ENABLE = 4,
   STATE_SCORE = 5,
   STATE_INTAKE = 6,
-  STATE_APPROACH = 7
+  STATE_APPROACH = 7,
+  STATE_DEALGEA = 9
 } pestoButtons;
 
 ActuatorControl controlState = {
@@ -58,10 +55,14 @@ void setup() {
   pivot.beginEncoder();
   elevator.beginEncoder();
   frontLeftMotor.setInverted(true);
+  frontRightMotor.setInverted(true);
   rearLeftMotor.setInverted(true);
+  rearRightMotor.setInverted(true);
   elevator.setInverted(true);
+  pivot.setInverted(true);
+  intake.setInverted(true);
   //elevator.setBrakeMode(true);
-  drivetrain.setMotorCurves(0.25, 1, 0.2, 1);
+  drivetrain.setMotorCurves(0.3, 1, 0.05, 2.5);
   
   //controlState.enableActuation = true;
   AutoModeAgent_beginControlTask(&controlState);
@@ -73,14 +74,13 @@ void setup() {
 
 float measured_angle = 55.0;
 float angular_scale = (10.0 * TWO_PI) / measured_angle;
-unsigned long lastPrintTime = 0;
 
 void loop() {
-
+  static unsigned long lastPrintTime = 0;
   if (lastPrintTime + 100 < millis()) {
     //Serial.printf("yaw(rad):%.3f,pitch(rad):%.3f,roll(rad):%.3f\r\n", NoU3.yaw, NoU3.pitch, NoU3.roll);
-    //PestoLink.printfTerminal("yaw(rad):%.3f,adjusted_yaw(rad):%.3f\r\n",NoU3.yaw,NoU3.yaw*angular_scale);
-    //PestoLink.printfTerminal("X(m):%.3f, Y(m):%.3f, theta(rad):%.3f\r\n", OpticalFlow_getX(), OpticalFlow_getY(),  OpticalFlow_getTheta());
+    //PestoLink.printfTerminal("elevator:%.3d, pivot:%.3d\r\n",elevator.getPosition(),pivot.getPosition());
+    PestoLink.printfTerminal("X(m):%.3f, Y(m):%.3f, theta(rad):%.3f\r\n", OpticalFlow_getX(), OpticalFlow_getY(),  OpticalFlow_getTheta());
     lastPrintTime = millis();
   }
 
@@ -91,8 +91,8 @@ void loop() {
   // Here we decide what the throttle and rotation direction will be based on gamepad inputs
   if (PestoLink.isConnected()) {
     float fieldPowerX = PestoLink.getAxis(0);
-    float fieldPowerY = -PestoLink.getAxis(1);
-    float rotationPower = -PestoLink.getAxis(2);
+    float fieldPowerY = -1 * PestoLink.getAxis(1);
+    float rotationPower = -1 * PestoLink.getAxis(2);
     
     // Get robot heading (in radians) from a gyro
     //float heading = OpticalFlow_getTheta();
@@ -113,15 +113,28 @@ void loop() {
   }
 
   if (PestoLink.keyHeld(Key::Q) || !digitalRead(0)) {
-    xQueueSend(AutoQueue, &approachWP, 0);
+    delay(2000);
+
+    xQueueSend(AutoQueue, &midwayWP, 0);
     xQueueSend(AutoQueue, &lineWP, 0);
+    //PestoLink.printfTerminal("starting automode setup");
 
     AutoModeAgent_begin(AutoQueue);
+
+    controlState.enableActuation = false;
   }
 
   if (PestoLink.keyHeld(Key::W) ) {
-    xQueueSend(AutoQueue, &approachWP, 0);
-    xQueueSend(AutoQueue, &startWP, 0);
+    xQueueSend(AutoQueue, &midwayWP, 0);
+    xQueueSend(AutoQueue, &reef1WP, 0);
+    xQueueSend(AutoQueue, &approach1HighWP, 0);
+    xQueueSend(AutoQueue, &score1HighWP, 0);
+    xQueueSend(AutoQueue, &loadingWP, 0);
+    xQueueSend(AutoQueue, &reef2WP, 0);
+    xQueueSend(AutoQueue, &approach2HighWP, 0);
+    xQueueSend(AutoQueue, &score2HighWP, 0);
+    xQueueSend(AutoQueue, &endWP, 0);
+    //PestoLink.printfTerminal("starting automode");
 
     AutoModeAgent_begin(AutoQueue);
   }
@@ -146,22 +159,22 @@ void loop() {
   if(PestoLink.buttonHeld(STATE_APPROACH)){
     if(controlState.coralMode){
       if(controlState.highMode) {
-        controlState.elevatorTarget = 1600;
-        controlState.pivotTarget = 600;
+        controlState.elevatorTarget = 1400;
+        controlState.pivotTarget = 590;
         controlState.intakePower = -0.8;
       } else {
-        controlState.elevatorTarget = 900;
-        controlState.pivotTarget = 600;
+        controlState.elevatorTarget = 265;
+        controlState.pivotTarget = 626;
         controlState.intakePower = -0.8;
       }
     } else { //algea mode
       if(controlState.highMode) {
-        controlState.elevatorTarget = 1800;
-        controlState.pivotTarget = 600;
+        controlState.elevatorTarget = 1740.0*(16.0/18.0);
+        controlState.pivotTarget = 726;
         controlState.intakePower = -0.8;
       } else {
         controlState.elevatorTarget = 0;
-        controlState.pivotTarget = 200;
+        controlState.pivotTarget = 290;
         controlState.intakePower = -0.8;
       }
     }
@@ -188,46 +201,47 @@ void loop() {
   if(stateScore){
     if(controlState.coralMode){
       if(controlState.highMode) {
-        controlState.elevatorTarget = 1600;
-        controlState.pivotTarget = 800;
+        controlState.elevatorTarget = 1450;
+        controlState.pivotTarget = 680;
         controlState.intakePower = 1;
       } else {
-        controlState.elevatorTarget = 900;
-        controlState.pivotTarget = 800;
+        controlState.elevatorTarget = 250.0*(16.0/18.0);
+        controlState.pivotTarget = 674;
         controlState.intakePower = 1;
       }
     } else { //algea mode
       if(controlState.highMode) {
-        controlState.elevatorTarget = 1800;
-        controlState.pivotTarget = 800;
+        controlState.elevatorTarget = 1740.0*(16.0/18.0);
+        controlState.pivotTarget = 553;
         controlState.intakePower = 1;
       } else {
         controlState.elevatorTarget = 0;
-        controlState.pivotTarget = 200;
+        controlState.pivotTarget = 290;
         controlState.intakePower = 1;
       }
     }
+  }
+
+  //algea intake approach
+  if(PestoLink.buttonHeld(STATE_DEALGEA)){
+    controlState.elevatorTarget = 546;
+    controlState.pivotTarget = 877;
+    controlState.intakePower = -0.8;
+    PestoLink.printfTerminal("dealgify");
   }
 
   //intake pressed
   if(stateIntake && !lastStateIntake) {
     if(controlState.coralMode){
       PestoLink.printfTerminal("Intaking Coral");
-      controlState.elevatorTarget = 900;
-      controlState.pivotTarget = 400;
+      controlState.elevatorTarget = 585;
+      controlState.pivotTarget = 145;
       controlState.intakePower = -0.8;
     } else { //algea mode
-      if(controlState.highMode) {
-        PestoLink.printfTerminal("Intaking High Algae");
-        controlState.elevatorTarget = 1800;
-        controlState.pivotTarget = 800;
-        controlState.intakePower = -0.8;
-      } else {
-        PestoLink.printfTerminal("Intaking Low Algae");
-        controlState.elevatorTarget = 900;
-        controlState.pivotTarget = 800;
-        controlState.intakePower = -0.8;
-      }
+      PestoLink.printfTerminal("Intaking High Algae");
+      controlState.elevatorTarget = 1300;
+      controlState.pivotTarget = 800;
+      controlState.intakePower = -0.8;
     }
   }
 
@@ -235,11 +249,11 @@ void loop() {
   if((!stateIntake && lastStateIntake) || (!stateScore && lastStateScore)) {
     if(controlState.coralMode){
       controlState.elevatorTarget = 0;
-      controlState.pivotTarget = 400;
+      controlState.pivotTarget = 50;
       controlState.intakePower = -0.8;
     } else { //algea mode
       controlState.elevatorTarget = 0;
-      controlState.pivotTarget = 400;
+      controlState.pivotTarget = 230;
       controlState.intakePower = -0.8;
     }
   }
@@ -251,6 +265,9 @@ void loop() {
 
 }
 
+//#include <stdio.h>
+//#include "driver/ledc.h"
+//#include "esp_err.h"
 
 // #define LEDC_TIMER              LEDC_TIMER_3
 // #define LEDC_MODE               LEDC_LOW_SPEED_MODE

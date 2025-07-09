@@ -27,7 +27,7 @@ TrapezoidalMotionProfile::TrapezoidalMotionProfile(Profile p) {
     ta = (vpeak - v0) / amax;
     tc = (dc > 0.0f) ? dc / vpeak : 0.0f;
     td = (vpeak - vf) / amax;
-    Serial.printf("a (s): %.3f  |  c (S): %.3f  |  d (s): %.3f \n",ta,tc,td);
+    //Serial.printf("a (s): %.3f  |  c (S): %.3f  |  d (s): %.3f \n",ta,tc,td);
     total_time = ta + tc + td;
 }
 
