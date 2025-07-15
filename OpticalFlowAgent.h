@@ -11,6 +11,8 @@
 
 // Function declarations
 void OpticalFlow_begin();
+void OpticalFlow_resetTracking();
+void OpticalFlow_rotateTracking(float angle);
 float OpticalFlow_getX();
 float OpticalFlow_getY();
 float OpticalFlow_getTheta();

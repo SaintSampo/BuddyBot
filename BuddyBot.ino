@@ -25,6 +25,7 @@ typedef enum {
   STATE_SCORE = 5,
   STATE_INTAKE = 6,
   STATE_APPROACH = 7,
+  STATE_AUTO = 8,
   STATE_DEALGEA = 9
 } pestoButtons;
 
@@ -62,7 +63,7 @@ void setup() {
   pivot.setInverted(true);
   intake.setInverted(true);
   //elevator.setBrakeMode(true);
-  drivetrain.setMotorCurves(0.3, 1, 0.05, 2.5);
+  drivetrain.setMotorCurves(0.3, 1, 0.05, 1.8);
   
   //controlState.enableActuation = true;
   AutoModeAgent_beginControlTask(&controlState);
@@ -71,9 +72,6 @@ void setup() {
   OpticalFlow_begin();
   NoU3.calibrateIMUs(); // takes 1000ms
 }
-
-float measured_angle = 55.0;
-float angular_scale = (10.0 * TWO_PI) / measured_angle;
 
 void loop() {
   static unsigned long lastPrintTime = 0;
@@ -95,8 +93,7 @@ void loop() {
     float rotationPower = -1 * PestoLink.getAxis(2);
     
     // Get robot heading (in radians) from a gyro
-    //float heading = OpticalFlow_getTheta();
-    float heading = NoU3.yaw * angular_scale;
+    float heading = OpticalFlow_getTheta();
 
     // Rotate joystick vector to be field-centric
     float cosA = cos(heading);
@@ -110,7 +107,7 @@ void loop() {
     NoU3.setServiceLight(LIGHT_ENABLED);
   } else {
     NoU3.setServiceLight(LIGHT_DISABLED);
-  }
+  } 
 
   if (PestoLink.keyHeld(Key::Q) || !digitalRead(0)) {
     delay(2000);
@@ -124,7 +121,7 @@ void loop() {
     controlState.enableActuation = false;
   }
 
-  if (PestoLink.keyHeld(Key::W) ) {
+  if (PestoLink.keyHeld(Key::W) || PestoLink.buttonHeld(STATE_AUTO)) {
     xQueueSend(AutoQueue, &midwayWP, 0);
     xQueueSend(AutoQueue, &reef1WP, 0);
     xQueueSend(AutoQueue, &approach1HighWP, 0);
@@ -133,10 +130,17 @@ void loop() {
     xQueueSend(AutoQueue, &reef2WP, 0);
     xQueueSend(AutoQueue, &approach2HighWP, 0);
     xQueueSend(AutoQueue, &score2HighWP, 0);
-    xQueueSend(AutoQueue, &endWP, 0);
+    xQueueSend(AutoQueue, &loadingWP, 0);
+    //xQueueSend(AutoQueue, &endWP, 0);
     //PestoLink.printfTerminal("starting automode");
 
     AutoModeAgent_begin(AutoQueue);
+
+    OpticalFlow_rotateTracking(30 * DEG_TO_RAD);
+  }
+
+  if (PestoLink.keyHeld(Key::Z) ) {
+    OpticalFlow_resetTracking();
   }
 
   if(PestoLink.buttonHeld(STATE_LOW)){
@@ -169,8 +173,8 @@ void loop() {
       }
     } else { //algea mode
       if(controlState.highMode) {
-        controlState.elevatorTarget = 1740.0*(16.0/18.0);
-        controlState.pivotTarget = 726;
+        controlState.elevatorTarget = 1546;
+        controlState.pivotTarget = 800;
         controlState.intakePower = -0.8;
       } else {
         controlState.elevatorTarget = 0;
@@ -245,8 +249,8 @@ void loop() {
     }
   }
 
-  //stow position, intake released, or score released
-  if((!stateIntake && lastStateIntake) || (!stateScore && lastStateScore)) {
+  //intake released
+  if(!stateIntake && lastStateIntake) {
     if(controlState.coralMode){
       controlState.elevatorTarget = 0;
       controlState.pivotTarget = 50;
@@ -255,6 +259,19 @@ void loop() {
       controlState.elevatorTarget = 0;
       controlState.pivotTarget = 230;
       controlState.intakePower = -0.8;
+    }
+  }
+
+  //score released
+  if(!stateScore && lastStateScore) {
+    if(controlState.coralMode){
+      controlState.elevatorTarget = 0;
+      controlState.pivotTarget = 50;
+      controlState.intakePower = 0;
+    } else { //algea mode
+      controlState.elevatorTarget = 0;
+      controlState.pivotTarget = 230;
+      controlState.intakePower = 0;
     }
   }
 

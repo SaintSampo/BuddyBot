@@ -30,6 +30,15 @@ void OpticalFlow_begin(){
     myOtos.setOffset(offsetPose);
 }
 
+void OpticalFlow_resetTracking(){
+    myOtos.resetTracking();
+}
+
+void OpticalFlow_rotateTracking(float angle){
+    sfe_otos_pose2d_t offsetPose = {0,0,angle};
+    myOtos.setOffset(offsetPose);
+}
+
 float OpticalFlow_getX(){
     if(!otosConnected) return 0.0;
 
