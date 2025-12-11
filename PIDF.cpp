@@ -5,7 +5,7 @@ PIDF::PIDF(float kp, float ki, float kd, float kf,
     this->kp = kp;
     this->ki = ki;
     this->kd = kd;
-    this->kd = kf;
+    this->kf = kf;
     this->min_output = min_output;
     this->max_output = max_output;
 
