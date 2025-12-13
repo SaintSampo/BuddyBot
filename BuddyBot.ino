@@ -56,12 +56,12 @@ void setup() {
   pivot.beginEncoder();
   elevator.beginEncoder();
   frontLeftMotor.setInverted(true);
-  frontRightMotor.setInverted(true);
+  frontRightMotor.setInverted(false);
   rearLeftMotor.setInverted(true);
-  rearRightMotor.setInverted(true);
+  rearRightMotor.setInverted(false);
   elevator.setInverted(true);
-  pivot.setInverted(true);
-  intake.setInverted(true);
+  pivot.setInverted(false);
+  intake.setInverted(false);
   //elevator.setBrakeMode(true);
   drivetrain.setMotorCurves(0.3, 1, 0.05, 1.8);
   

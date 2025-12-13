@@ -1,5 +1,7 @@
 #include "AutoModeAgent.h"
 
+// TODO: my Ziegler–Nichols tuning is totally done wrong here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 float X_Ku = 50.0 * 0.5;
 float X_Tu = 1.0/(150.0/60.0); //Period = 1/(BPM/60), BPM is measuring full cycles per minute
 float X_P = 0.6 * X_Ku; //0.6 * X_Ku;
